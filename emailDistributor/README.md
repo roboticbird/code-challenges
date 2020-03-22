@@ -37,7 +37,7 @@ Execution time: 50.113478474s
 ```
 
 The program emulates emails with a half second wait. Additionally it emulates errors based on a
-random number. These failiars will be logged in the console. When the program has completed its task
+random number. These failurs will be logged in the console. When the program has completed its task
 of sending emails it will report how many where send sucessfully, how many failed, number of workers
 used, and execution time.
 
