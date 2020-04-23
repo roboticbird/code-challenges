@@ -18,14 +18,13 @@ func main() {
 	}
 
 	// execute email distributor
-	succeeded, failed := md5browser.BrowseList(urls, workers)
+	succeeded, _ := md5browser.BrowseList(urls, workers)
 
-	// print results
-	for _, fail := range failed {
-		fmt.Printf("\nFailed: %s %s\n", fail.Url, fail.Reason)
-	}
-
+	// Print url and hash
 	for _, sucess := range succeeded {
 		fmt.Printf("\n%s %x\n", sucess.Url, sucess.Hash)
 	}
+
+	// errors are not reported. The problem deffinition asked not to add additional features. However
+	// they are returned by the BrowseList function
 }
