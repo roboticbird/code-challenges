@@ -2,14 +2,12 @@ package md5browser
 
 import (
 	"crypto/md5"
-	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"regexp"
 )
 
-type Response struct {
+type Result struct {
 	Url  string
 	Hash []byte
 }
@@ -19,9 +17,13 @@ type ReportError struct {
 	Reason error
 }
 
-func BrowseList(urlList []string, workers int) ([]Response, []ReportError) {
+type getRequester interface {
+	Req(url string) (*http.Response, error)
+}
+
+func BrowseList(urlList []string, workers int) ([]Result, []ReportError) {
 	// set up input and output channels
-	sucess := make(chan Response)
+	sucess := make(chan Result)
 	fail := make(chan ReportError)
 	urls := make(chan string, len(urlList))
 
@@ -42,21 +44,20 @@ func BrowseList(urlList []string, workers int) ([]Response, []ReportError) {
 	close(urls)
 
 	// wait for all results to be returned
-	succeeded := make([]Response, 0, len(urlList))
+	succeeded := make([]Result, 0, len(urlList))
 	failed := make([]ReportError, 0, len(urlList))
 	for i := 0; i < len(urlList); i++ {
 		select {
 		case msg := <-sucess:
 			succeeded = append(succeeded, msg)
 		case msg := <-fail:
-			log.Print(fmt.Sprintf("Failed to fetch url: %s\n Reason: %s\n", msg.Url, msg.Reason))
 			failed = append(failed, msg)
 		}
 	}
 	return succeeded, failed
 }
 
-func fetchUrlAndHash(urls <-chan string, sucess chan<- Response, fail chan<- ReportError) {
+var fetchUrlAndHash = func(urls <-chan string, sucess chan<- Result, fail chan<- ReportError) {
 	for url := range urls {
 		url, err := ensureProtocolScheme(url)
 		if err != nil {
@@ -65,7 +66,8 @@ func fetchUrlAndHash(urls <-chan string, sucess chan<- Response, fail chan<- Rep
 		}
 
 		// fetch reposne from url
-		resp, err := http.Get(url)
+		//resp, err := http.Get(url)
+		resp, err := get(url)
 		if err != nil {
 			fail <- ReportError{url, err}
 			continue
@@ -80,9 +82,13 @@ func fetchUrlAndHash(urls <-chan string, sucess chan<- Response, fail chan<- Rep
 		// return md5 hash of response
 		hash := md5.New()
 		hash.Write([]byte(body))
-		sucess <- Response{url, hash.Sum(nil)}
+		sucess <- Result{url, hash.Sum(nil)}
 		resp.Body.Close()
 	}
+}
+
+var get = func(url string) (*http.Response, error) {
+	return http.Get(url)
 }
 
 func ensureProtocolScheme(url string) (string, error) {
